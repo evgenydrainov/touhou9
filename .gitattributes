@@ -1,3 +1,5 @@
 * text=auto
 external/* linguist-vendored
 touhou9/src/external/* linguist-vendored
+touhou9/src/example/* linguist-vendored
+*.h linguist-language=C++

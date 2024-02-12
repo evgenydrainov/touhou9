@@ -11,15 +11,15 @@
 Renderer* renderer;
 
 void Renderer::init() {
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	GLCheck(glEnable(GL_BLEND));
+	GLCheck(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
+	GLCheck(glGenVertexArrays(1, &vao));
+	GLCheck(glBindVertexArray(vao));
 
-	glGenBuffers(1, &vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, BATCH_MAX_VERTICIES * sizeof(Vertex), nullptr, GL_DYNAMIC_DRAW);
+	GLCheck(glGenBuffers(1, &vbo));
+	GLCheck(glBindBuffer(GL_ARRAY_BUFFER, vbo));
+	GLCheck(glBufferData(GL_ARRAY_BUFFER, BATCH_MAX_VERTICIES * sizeof(Vertex), nullptr, GL_DYNAMIC_DRAW));
 
 	batch.reserve(BATCH_MAX_VERTICIES);
 
@@ -40,19 +40,19 @@ void Renderer::init() {
 			offset += 4;
 		}
 
-		glGenBuffers(1, &ibo);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicies.size() * sizeof(indicies[0]), indicies.data(), GL_STATIC_DRAW);
+		GLCheck(glGenBuffers(1, &ibo));
+		GLCheck(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo));
+		GLCheck(glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicies.size() * sizeof(indicies[0]), indicies.data(), GL_STATIC_DRAW));
 	}
 
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(batch[0]), (void*) 0); // position
+	GLCheck(glEnableVertexAttribArray(0));
+	GLCheck(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(batch[0]), (void*) 0)); // position
 
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(batch[0]), (void*) 12); // color
+	GLCheck(glEnableVertexAttribArray(1));
+	GLCheck(glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(batch[0]), (void*) 12)); // color
 
-	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(batch[0]), (void*) 28); // texcoord
+	GLCheck(glEnableVertexAttribArray(2));
+	GLCheck(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(batch[0]), (void*) 28)); // texcoord
 
 	proj  = mat4{1.0f};
 	view  = mat4{1.0f};
@@ -61,38 +61,39 @@ void Renderer::init() {
 
 	current_shader = &Shaders[shd_default];
 
-	if (current_shader->program != 0) glUseProgram(current_shader->program);
+	if (current_shader->program != 0) { GLCheck(glUseProgram(current_shader->program)); }
 }
 
 void Renderer::destroy() {
-	glDeleteBuffers(1, &ibo);
-	glDeleteBuffers(1, &vbo);
-	glDeleteVertexArrays(1, &vao);
+	if (ibo != 0) { GLCheck(glDeleteBuffers(1, &ibo)); }
+	if (vbo != 0) { GLCheck(glDeleteBuffers(1, &vbo)); }
+	if (vao != 0) { GLCheck(glDeleteVertexArrays(1, &vao)); }
 }
 
 void Renderer::break_batch() {
 	if (batch.empty()) {
 		return;
 	}
+
 	if (current_texture == 0) {
 		batch.clear();
 		return;
 	}
 
 #if 1
-	// glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, batch.size() * sizeof(batch[0]), batch.data());
+	// GLCheck(glBindBuffer(GL_ARRAY_BUFFER, vbo));
+	GLCheck(glBufferSubData(GL_ARRAY_BUFFER, 0, batch.size() * sizeof(batch[0]), batch.data()));
 
 	// glEnableVertexAttribArray
 
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, current_texture);
+	GLCheck(glActiveTexture(GL_TEXTURE0));
+	GLCheck(glBindTexture(GL_TEXTURE_2D, current_texture));
 
 	MVP = (proj * view) * model;
 
 	if (current_shader->program != 0) {
-		if (current_shader->u_texture != -1) glUniform1i(current_shader->u_texture, 0);
-		if (current_shader->u_mvp     != -1) glUniformMatrix4fv(current_shader->u_mvp, 1, GL_FALSE, &MVP[0][0]);
+		if (current_shader->u_texture != -1) { GLCheck(glUniform1i(current_shader->u_texture, 0)); }
+		if (current_shader->u_mvp     != -1) { GLCheck(glUniformMatrix4fv(current_shader->u_mvp, 1, GL_FALSE, &MVP[0][0])); }
 	}
 
 	switch (mode) {
@@ -101,7 +102,7 @@ void Renderer::break_batch() {
 
 			assert(batch.size() % VERTICIES_PER_QUAD == 0);
 
-			glDrawElements(GL_TRIANGLES, ((int)batch.size() / VERTICIES_PER_QUAD) * INDICIES_PER_QUAD, GL_UNSIGNED_INT, nullptr);
+			GLCheck(glDrawElements(GL_TRIANGLES, ((int)batch.size() / VERTICIES_PER_QUAD) * INDICIES_PER_QUAD, GL_UNSIGNED_INT, nullptr));
 			break;
 		}
 
@@ -110,7 +111,7 @@ void Renderer::break_batch() {
 
 			assert(batch.size() % 3 == 0);
 
-			glDrawArrays(GL_TRIANGLES, 0, (int)batch.size());
+			GLCheck(glDrawArrays(GL_TRIANGLES, 0, (int)batch.size()));
 			break;
 		}
 
@@ -148,7 +149,7 @@ static void gl_clear_errors() {
 
 static void gl_print_errors() {
 	while (u32 error = glGetError()) {
-		log_error("GL ERROR: %u", error);
+		log_error("OpenGL error: %u", error);
 	}
 }
 
@@ -165,22 +166,22 @@ void Renderer::set_render_target(Texture* texture) {
 		assert(texture->fbo != 0);
 
 		break_batch();
-		glBindFramebuffer(GL_FRAMEBUFFER, texture->fbo);
+		GLCheck(glBindFramebuffer(GL_FRAMEBUFFER, texture->fbo));
 	} else {
 		break_batch();
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		GLCheck(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 	}
 }
 
 void Renderer::set_viewport(int x, int y, int width, int height) {
 	break_batch();
-	glViewport(x, y, width, height);
+	GLCheck(glViewport(x, y, width, height));
 }
 
 void Renderer::clear(float r, float g, float b, float a) {
 	break_batch();
-	glClearColor(r, g, b, a);
-	glClear(GL_COLOR_BUFFER_BIT);
+	GLCheck(glClearColor(r, g, b, a));
+	GLCheck(glClear(GL_COLOR_BUFFER_BIT));
 }
 
 void Renderer::set_proj(mat4 proj) {
@@ -214,7 +215,7 @@ void Renderer::set_shader(u32 shader_index) {
 			current_shader = &Shaders[shd_default];
 		}
 
-		if (current_shader->program != 0) glUseProgram(current_shader->program);
+		if (current_shader->program != 0) { GLCheck(glUseProgram(current_shader->program)); }
 	}
 }
 
@@ -225,32 +226,32 @@ void Renderer::reset_shader() {
 void Renderer::set_shader_uniform(int location, float value) {
 	if (location == -1) return;
 	if (current_shader->program == 0) return;
-	glUniform1f(location, value);
+	GLCheck(glUniform1f(location, value));
 }
 void Renderer::set_shader_uniform(int location, vec2 value) {
 	if (location == -1) return;
 	if (current_shader->program == 0) return;
-	glUniform2f(location, value.x, value.y);
+	GLCheck(glUniform2f(location, value.x, value.y));
 }
 void Renderer::set_shader_uniform(int location, vec3 value) {
 	if (location == -1) return;
 	if (current_shader->program == 0) return;
-	glUniform3f(location, value.x, value.y, value.z);
+	GLCheck(glUniform3f(location, value.x, value.y, value.z));
 }
 void Renderer::set_shader_uniform(int location, vec4 value) {
 	if (location == -1) return;
 	if (current_shader->program == 0) return;
-	glUniform4f(location, value.x, value.y, value.z, value.w);
+	GLCheck(glUniform4f(location, value.x, value.y, value.z, value.w));
 }
 void Renderer::set_shader_uniform(int location, int value) {
 	if (location == -1) return;
 	if (current_shader->program == 0) return;
-	glUniform1i(location, value);
+	GLCheck(glUniform1i(location, value));
 }
 void Renderer::set_shader_uniform(int location, mat4 value) {
 	if (location == -1) return;
 	if (current_shader->program == 0) return;
-	glUniformMatrix4fv(location, 1, GL_FALSE, &value[0][0]);
+	GLCheck(glUniformMatrix4fv(location, 1, GL_FALSE, &value[0][0]));
 }
 
 void Renderer::draw_textured_quad(Texture* texture,

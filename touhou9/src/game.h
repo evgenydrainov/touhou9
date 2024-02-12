@@ -35,7 +35,7 @@ struct Game {
 	int u_shd_sharp_bilinear_source_size = -1;
 	int u_shd_sharp_bilinear_scale = -1;
 
-	void init();
+	bool init();
 	void init_audio();
 	void destroy();
 

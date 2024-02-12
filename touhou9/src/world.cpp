@@ -60,9 +60,9 @@ void World::destroy() {
 
 	instance_cleanup(&player);
 
-	mco_destroy(co);
+	if (co) mco_destroy(co);
 
-	free(bullets);
+	if (bullets) free(bullets);
 }
 
 static void instance_animate(Object* inst, float delta) {
@@ -80,6 +80,8 @@ static void instance_animate(Object* inst, float delta) {
 	if (inst->frame_index >= float(sprite->frame_count)) {
 		float a = inst->frame_index - float(sprite->loop_frame);
 		float b = float(sprite->frame_count - sprite->loop_frame);
+
+		assert(b != 0);
 
 		inst->frame_index = float(sprite->loop_frame) + fmodf(a, b);
 	}
@@ -119,14 +121,22 @@ void World::update_state_playing(float delta) {
 				player.vsp = spd * move_y;
 
 				if (move_x < 0) {
-					instance_animate(&player, delta);
+					if (player.frame_index < 4) {
+						instance_animate(&player, delta * 2.0f);
+					} else {
+						instance_animate(&player, delta);
+					}
 
 					if (player.sprite_index != spr_char_reimu_left) {
 						player.sprite_index = spr_char_reimu_left;
 						player.frame_index = 0;
 					}
 				} else if (move_x > 0) {
-					instance_animate(&player, delta);
+					if (player.frame_index < 4) {
+						instance_animate(&player, delta * 2.0f);
+					} else {
+						instance_animate(&player, delta);
+					}
 
 					if (player.sprite_index != spr_char_reimu_right) {
 						player.sprite_index = spr_char_reimu_right;

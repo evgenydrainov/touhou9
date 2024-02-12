@@ -22,20 +22,21 @@ static u32 compile_shader(const char* source,
 						  u32 type,
 						  const char* name_for_debug) {
 
-	u32 shader = glCreateShader(type);
+	u32 shader;
+	GLCheck(shader = glCreateShader(type));
 
-	glShaderSource(shader, 1, &source, &source_length);
-	glCompileShader(shader);
+	GLCheck(glShaderSource(shader, 1, &source, &source_length));
+	GLCheck(glCompileShader(shader));
 
 	int result;
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &result);
+	GLCheck(glGetShaderiv(shader, GL_COMPILE_STATUS, &result));
 	if (result == GL_FALSE) {
 		char message[GL_INFO_LOG_BUFFER_SIZE];
-		glGetShaderInfoLog(shader, sizeof(message), nullptr, message);
+		GLCheck(glGetShaderInfoLog(shader, sizeof(message), nullptr, message));
 
 		log_error("\nGL compile error in %s shader %s:\n%s", get_shader_type_name(type), name_for_debug, message);
 
-		glDeleteShader(shader);
+		GLCheck(glDeleteShader(shader));
 		return 0;
 	}
 
@@ -47,63 +48,64 @@ static u32 create_shader(const char* vertex_source, int vertex_length,
 						 const char* vertex_name_for_debug,
 						 const char* fragment_name_for_debug) {
 
-	u32 program = glCreateProgram();
+	u32 program;
+	GLCheck(program = glCreateProgram());
 	u32 vs = compile_shader(vertex_source, vertex_length,
 							GL_VERTEX_SHADER, vertex_name_for_debug);
 	u32 fs = compile_shader(fragment_source, fragment_length,
 							GL_FRAGMENT_SHADER, fragment_name_for_debug);
 
 	if (vs == 0) {
-		glDeleteProgram(program);
+		GLCheck(glDeleteProgram(program));
 		program = 0;
 		goto out;
 	}
 	if (fs == 0) {
-		glDeleteProgram(program);
+		GLCheck(glDeleteProgram(program));
 		program = 0;
 		goto out;
 	}
 
-	glAttachShader(program, vs);
-	glAttachShader(program, fs);
+	GLCheck(glAttachShader(program, vs));
+	GLCheck(glAttachShader(program, fs));
 
-	glLinkProgram(program);
+	GLCheck(glLinkProgram(program));
 
 	{
 		int result;
-		glGetProgramiv(program, GL_LINK_STATUS, &result);
+		GLCheck(glGetProgramiv(program, GL_LINK_STATUS, &result));
 		if (result == GL_FALSE) {
 			char message[GL_INFO_LOG_BUFFER_SIZE];
-			glGetProgramInfoLog(program, sizeof(message), nullptr, message);
+			GLCheck(glGetProgramInfoLog(program, sizeof(message), nullptr, message));
 
 			log_error("GL LINK ERROR: %s", message);
 
-			glDeleteProgram(program);
+			GLCheck(glDeleteProgram(program));
 			program = 0;
 			goto out;
 		}
 	}
 
-	glValidateProgram(program);
+	GLCheck(glValidateProgram(program));
 
 	{
 		int result;
-		glGetProgramiv(program, GL_VALIDATE_STATUS, &result);
+		GLCheck(glGetProgramiv(program, GL_VALIDATE_STATUS, &result));
 		if (result == GL_FALSE) {
 			char message[GL_INFO_LOG_BUFFER_SIZE];
-			glGetProgramInfoLog(program, sizeof(message), nullptr, message);
+			GLCheck(glGetProgramInfoLog(program, sizeof(message), nullptr, message));
 
 			log_error("GL VALIDATE ERROR: %s", message);
 
-			glDeleteProgram(program);
+			GLCheck(glDeleteProgram(program));
 			program = 0;
 			goto out;
 		}
 	}
 
 out:
-	if (vs != 0) glDeleteShader(vs);
-	if (fs != 0) glDeleteShader(fs);
+	if (vs != 0) { GLCheck(glDeleteShader(vs)); }
+	if (fs != 0) { GLCheck(glDeleteShader(fs)); }
 
 	return program;
 }
@@ -119,8 +121,8 @@ bool Shader::create(const char* vertex_source, int vertex_length,
 							fragment_name_for_debug);
 
 	if (program != 0) {
-		u_texture = glGetUniformLocation(program, "u_Texture");
-		u_mvp     = glGetUniformLocation(program, "u_MVP");
+		GLCheck(u_texture = glGetUniformLocation(program, "u_Texture"));
+		GLCheck(u_mvp     = glGetUniformLocation(program, "u_MVP"));
 
 		if (u_texture == -1) {
 			log_error("Shader %s doesn't have uniform \"u_Texture\".", fragment_name_for_debug);
@@ -137,9 +139,8 @@ bool Shader::create(const char* vertex_source, int vertex_length,
 }
 
 void Shader::destroy() {
-	if (program != 0) glDeleteProgram(program);
+	if (program != 0) { GLCheck(glDeleteProgram(program)); }
 }
-
 
 
 int shader_get_uniform(u32 shader_index, const char* name) {
@@ -147,7 +148,7 @@ int shader_get_uniform(u32 shader_index, const char* name) {
 	Shader* shader = &Shaders[shader_index];
 	int result = -1;
 	if (shader->program != 0) {
-		result = glGetUniformLocation(shader->program, name);
+		GLCheck(result = glGetUniformLocation(shader->program, name));
 		if (result == -1) {
 			log_info("Shader %u doesn't have uniform \"%s\".", shader_index, name);
 		}

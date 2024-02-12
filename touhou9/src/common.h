@@ -8,10 +8,27 @@
 
 #define ArrayLength(a) (sizeof(a)/sizeof(*(a)))
 
-#define GLCheck(code) code; assert(glGetError() == GL_NO_ERROR)
+#ifdef NDEBUG
+#define GLCheck(code) code
+#else
+#define GLCheck(code)							\
+	do {										\
+		code;									\
+		assert(glGetError() == GL_NO_ERROR);	\
+	} while (0)
+#endif
 
 #define log_info(fmt, ...)  printf(fmt "\n", ##__VA_ARGS__)
-#define log_error(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
+#define log_error(fmt, ...) printf(KRED fmt "\n" KNRM, ##__VA_ARGS__)
+
+#define KNRM  "\x1B[0m"
+#define KRED  "\x1B[31m"
+#define KGRN  "\x1B[32m"
+#define KYEL  "\x1B[33m"
+#define KBLU  "\x1B[34m"
+#define KMAG  "\x1B[35m"
+#define KCYN  "\x1B[36m"
+#define KWHT  "\x1B[37m"
 
 typedef uint8_t u8;
 typedef uint16_t u16;

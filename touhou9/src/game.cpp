@@ -54,7 +54,9 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 }
 
 static void error_callback(int error_code, const char* description) {
-	log_error("GLFW ERROR: %s", description);
+	log_error("GLFW error: %s.", description);
+
+	platform_message_box(game->window, description, "GLFW Error");
 }
 
 static void log_callback(void* user, u32 level, const char* message) {
@@ -62,7 +64,15 @@ static void log_callback(void* user, u32 level, const char* message) {
 		return;
 	}
 
-	printf("[%s] %s", ma_log_level_to_string(level), message);
+	if (level == MA_LOG_LEVEL_ERROR) {
+		printf(KRED "[%s] %s" KNRM, ma_log_level_to_string(level), message);
+
+		platform_message_box(game->window, message, "Miniaudio Error");
+	} else if (level == MA_LOG_LEVEL_WARNING) {
+		printf(KYEL "[%s] %s" KNRM, ma_log_level_to_string(level), message);
+	} else {
+		printf("[%s] %s", ma_log_level_to_string(level), message);
+	}
 }
 
 void Game::init_audio() {
@@ -86,14 +96,14 @@ void Game::init_audio() {
 
 	result = ma_log_init(nullptr, &audio_log);
 	if (result != MA_SUCCESS) {
-		log_error("Couldn't create audio logger");
+		log_error("Couldn't create audio logger.");
 	} else {
 		context_config.pLog = &audio_log;
 
 		if (audio_logging_enabled) {
 			result = ma_log_register_callback(&audio_log, ma_log_callback_init(log_callback, nullptr));
 			if (result != MA_SUCCESS) {
-				log_error("Couldn't set audio log callback");
+				log_error("Couldn't set audio log callback.");
 			}
 		}
 	}
@@ -135,8 +145,9 @@ static const char* platform_get_name(int platform) {
 	return "Unknown";
 }
 
-void Game::init() {
-	log_info("Starting game...");
+bool Game::init() {
+	renderer = &renderer_instance;
+	world = &world_instance;
 
 	// 
 	// Why not
@@ -149,12 +160,12 @@ void Game::init() {
 
 	if (!glfwInit()) {
 		log_error("Couldn't initialize GLFW.");
-		exit(1);
+		return false;
 	}
 
 	{
-		int platform = glfwGetPlatform();
-		log_info("GLFW platform: %s", platform_get_name(platform));
+		// int platform = glfwGetPlatform();
+		// log_info("GLFW platform: %s.", platform_get_name(platform));
 	}
 
 	int window_w = GAME_W;
@@ -182,14 +193,22 @@ void Game::init() {
 
 	if (!window) {
 		log_error("Couldn't create window.");
-		exit(1);
+		return false;
 	}
 
 	glfwSetKeyCallback(window, key_callback);
 
 	glfwMakeContextCurrent(window);
-	gladLoadGL(glfwGetProcAddress);
 	glfwSwapInterval(0);
+
+	{
+		int result = gladLoadGL(glfwGetProcAddress);
+		if (result == 0) {
+			log_error("Couldn't initialize GLAD.");
+			platform_message_box(window, "Error", "Couldn't load OpenGL functions.");
+			return false;
+		}
+	}
 
 	{
 		const char* string;
@@ -199,20 +218,20 @@ void Game::init() {
 
 		log_info("OpenGL %d.%d.%d", maj, min, rev);
 
-		string = (const char*) glGetString(GL_VERSION);
+		GLCheck(string = (const char*) glGetString(GL_VERSION));
 		log_info("GL version: %s", string);
 
-		string = (const char*) glGetString(GL_SHADING_LANGUAGE_VERSION);
+		GLCheck(string = (const char*) glGetString(GL_SHADING_LANGUAGE_VERSION));
 		log_info("GL shading language version: %s", string);
 
-		string = (const char*) glGetString(GL_VENDOR);
+		GLCheck(string = (const char*) glGetString(GL_VENDOR));
 		log_info("GL vendor: %s", string);
 
-		string = (const char*) glGetString(GL_RENDERER);
+		GLCheck(string = (const char*) glGetString(GL_RENDERER));
 		log_info("GL renderer: %s", string);
 	}
 
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	GLCheck(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
 
 	init_audio();
 
@@ -243,11 +262,11 @@ void Game::init() {
 	u_shd_sharp_bilinear_source_size = shader_get_uniform(shd_sharp_bilinear, "u_SourceSize");
 	u_shd_sharp_bilinear_scale       = shader_get_uniform(shd_sharp_bilinear, "u_Scale");
 
-	renderer = &renderer_instance;
 	renderer->init();
 
-	world = &world_instance;
 	world->init();
+
+	return true;
 }
 
 void Game::destroy() {
@@ -262,10 +281,11 @@ void Game::destroy() {
 	unload_all_textures();
 
 	ma_engine_uninit(&audio_engine);
+	// TODO: Crashes when context is {0}
 	ma_context_uninit(&audio_context);
 	ma_log_uninit(&audio_log);
 
-	glfwDestroyWindow(window);
+	if (window) glfwDestroyWindow(window);
 	glfwTerminate();
 }
 
@@ -298,14 +318,22 @@ void Game::run() {
 			int height;
 			glfwGetFramebufferSize(window, &width, &height);
 
+			static bool skipping = false;
+
 			if (width != 0 && height != 0) {
 				double t = glfwGetTime();
 
 				draw(1);
 
 				draw_took = (glfwGetTime() - t) * 1000.0;
+
+				skipping = false;
 			} else {
-				// log_info("Skipping draw for this frame.");
+				if (!skipping) {
+					log_info("Framebuffer size is zero. Skipping draw.");
+				}
+
+				skipping = true;
 			}
 		}
 
@@ -386,7 +414,7 @@ void Game::draw(float delta) {
 
 				{
 					// static int i = 0;
-					// if (i++ % 60 == 0) log_info("\n\n\n\n%s", buf);
+					// if (i++ % 60 == 0) log_info("%s\n", buf);
 				}
 			}
 		}
@@ -400,7 +428,7 @@ void Game::draw(float delta) {
 			renderer->set_viewport(0, 0, width, height);
 			renderer->set_proj(glm::ortho<float>(0, (float)width, (float)height, 0, -1, 1));
 
-			glClear(GL_COLOR_BUFFER_BIT);
+			GLCheck(glClear(GL_COLOR_BUFFER_BIT));
 
 			float xscale = (float)width  / (float)GAME_W;
 			float yscale = (float)height / (float)GAME_H;

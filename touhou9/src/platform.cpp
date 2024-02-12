@@ -6,6 +6,12 @@
 
 #include <Windows.h>
 
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
+
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
+
 u8* platform_read_entire_file(const char* filepath, int* filesize) {
 	FILE *f;
 	fopen_s(&f, filepath, "rb");
@@ -33,4 +39,9 @@ void platform_sleep(u32 ms) {
 	timeBeginPeriod(1);
 	Sleep(ms);
 	timeEndPeriod(1);
+}
+
+void platform_message_box(GLFWwindow* window, const char* text, const char* caption) {
+	HWND hwnd = (window) ? glfwGetWin32Window(window) : nullptr;
+	MessageBoxA(hwnd, text, caption, 0);
 }
