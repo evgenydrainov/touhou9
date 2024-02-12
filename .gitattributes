@@ -3,3 +3,5 @@ external/** linguist-vendored
 touhou9/src/external/** linguist-vendored
 touhou9/src/example/** linguist-vendored
 *.h linguist-language=C++
+*.vert linguist-language=GLSL
+*.frag linguist-language=GLSL
