@@ -19,6 +19,7 @@ enum {
 	tex_background,
 	tex_projectiles,
 	tex_boss_cirno,
+	tex_misty_lake_texture,
 
 	TEXTURE_COUNT
 };
@@ -56,6 +57,7 @@ enum {
 enum {
 	shd_default,
 	shd_sharp_bilinear,
+	shd_stage1_background,
 
 	SHADER_COUNT
 };

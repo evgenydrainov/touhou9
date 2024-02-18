@@ -30,6 +30,19 @@ static Bullet* shoot(float x, float y,
 	b->sprite_index = sprite_index;
 	b->frame_index = float(color);
 
+	switch (b->sprite_index) {
+		case spr_bullet_arrow:	 b->radius = 2.5f; break;
+		case spr_bullet_outline: b->radius = 2.5f; break;
+		case spr_bullet_filled:	 b->radius = 3.5f; break;
+		case spr_bullet_rice:	 b->radius = 2.5f; break;
+		case spr_bullet_kunai:	 b->radius = 2.5f; break;
+		case spr_bullet_shard:	 b->radius = 2.5f; break;
+		case spr_bullet_card:	 b->radius = 2.5f; break;
+		case spr_bullet_bullet:	 b->radius = 2.5f; break;
+
+		case spr_bullet_small:	 b->radius = 2.5f; break;
+	}
+
 	b->flags |= flags;
 	if (script) {
 		

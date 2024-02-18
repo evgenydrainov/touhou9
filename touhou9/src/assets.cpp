@@ -11,14 +11,15 @@ Shader  Shaders[SHADER_COUNT]   = {};
 Sound   Sounds[SOUND_COUNT]     = {};
 
 
-static_assert(TEXTURE_COUNT == 6, "");
+static_assert(TEXTURE_COUNT == 7, "");
 static const char* texture_filepaths[TEXTURE_COUNT] = {
-	/* tex_white       */ "textures/white.png",
-	/* tex_characters  */ "textures/characters.png",
-	/* tex_fonts       */ "textures/fonts.png",
-	/* tex_background  */ "textures/background.png",
-	/* tex_projectiles */ "textures/projectiles.png",
-	/* tex_boss_cirno  */ "textures/boss_cirno.png",
+	/* tex_white       */        "textures/white.png",
+	/* tex_characters  */        "textures/characters.png",
+	/* tex_fonts       */        "textures/fonts.png",
+	/* tex_background  */        "textures/background.png",
+	/* tex_projectiles */        "textures/projectiles.png",
+	/* tex_boss_cirno  */        "textures/boss_cirno.png",
+	/* tex_misty_lake_texture */ "textures/misty_lake_texture.png",
 };
 
 
@@ -53,14 +54,16 @@ Sprite Sprites[SPRITE_COUNT] = {
 };
 
 
-static_assert(SHADER_COUNT == 2, "");
+static_assert(SHADER_COUNT == 3, "");
 static const char* shader_vertex_filepaths[SHADER_COUNT] = {
 	"shaders/default.vert",
 	"shaders/sharp_bilinear.vert",
+	"shaders/stage1_background.vert",
 };
 static const char* shader_fragment_filepaths[SHADER_COUNT] = {
 	"shaders/default.frag",
 	"shaders/sharp_bilinear.frag",
+	"shaders/stage1_background.frag",
 };
 
 

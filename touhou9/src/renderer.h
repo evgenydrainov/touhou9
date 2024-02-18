@@ -32,6 +32,8 @@ struct Vertex {
 	// vec3 normal;
 	vec4 color;
 	vec2 uv;
+
+	static void set_vertex_attrib();
 };
 
 enum {
@@ -87,6 +89,7 @@ struct Renderer {
 	void set_model(mat4 model);
 	void set_shader(u32 shader_index);
 	void reset_shader();
+	void reset_state();
 
 	void set_shader_uniform(int location, float value);
 	void set_shader_uniform(int location, vec2 value);

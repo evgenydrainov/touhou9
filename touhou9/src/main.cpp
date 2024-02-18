@@ -21,7 +21,9 @@ int main(int argc, char* argv[]) {
 		game->run();
 	}
 
-	game->destroy();
+	{
+		game->destroy();
+	}
 
 	log_info("Game finished.");
 

@@ -22,6 +22,7 @@ void World::init() {
 		player.instance_id = create_instance_id(OBJECT_TYPE_PLAYER);
 		player.x = PLAYER_STARTING_X;
 		player.y = PLAYER_STARTING_Y;
+		player.radius = 2;
 		player.sprite_index = spr_char_reimu_idle;
 	}
 
@@ -36,6 +37,12 @@ void World::init() {
 		mco_desc desc = mco_desc_init(stage_script, 0);
 		mco_create(&co, &desc);
 		// mco_init(co, &desc);
+	}
+
+	{
+		extern void init_stage_background();
+
+		init_stage_background();
 	}
 }
 
@@ -167,34 +174,23 @@ void World::update_state_playing(float delta) {
 		instance_animate(&boss, delta);
 	}
 
-	{
-		player.x += player.hsp * delta;
-		player.y += player.vsp * delta;
+	for (int i = 0; i < bullet_count; i++) {
+		Bullet* b = &bullets[i];
 
-		for (int i = 0; i < bullet_count; i++) {
-			Bullet* b = &bullets[i];
-
-			b->x += lengthdir_x(b->spd, b->dir) * delta;
-			b->y += lengthdir_y(b->spd, b->dir) * delta;
-
-			b->spd += b->acc * delta;
+		float off = 50.0f;
+		if (b->x < -off
+			|| b->y < -off
+			|| b->x >= float(PLAY_AREA_W) + off
+			|| b->y >= float(PLAY_AREA_H) + off) {
+			bullet_destroy_idx(i--);
 		}
 	}
 
 	{
-		player.x = fclampf(player.x, 0, PLAY_AREA_W - 1);
-		player.y = fclampf(player.y, 0, PLAY_AREA_H - 1);
+		const int physics_steps = 5;
 
-		for (int i = 0; i < bullet_count; i++) {
-			Bullet* b = &bullets[i];
-
-			float off = 50.0f;
-			if (b->x < -off
-				|| b->y < -off
-				|| b->x >= float(PLAY_AREA_W) + off
-				|| b->y >= float(PLAY_AREA_H) + off) {
-				bullet_destroy_idx(i--);
-			}
+		for (int i = 0; i < physics_steps; i++) {
+			physics_step(delta / float(physics_steps));
 		}
 	}
 
@@ -224,6 +220,23 @@ void World::update_state_playing(float delta) {
 
 }
 
+void World::physics_step(float delta) {
+	player.x += player.hsp * delta;
+	player.y += player.vsp * delta;
+
+	player.x = fclampf(player.x, 0, PLAY_AREA_W - 1);
+	player.y = fclampf(player.y, 0, PLAY_AREA_H - 1);
+
+	for (int i = 0; i < bullet_count; i++) {
+		Bullet* b = &bullets[i];
+
+		b->x += lengthdir_x(b->spd, b->dir) * delta;
+		b->y += lengthdir_y(b->spd, b->dir) * delta;
+
+		b->spd += b->acc * delta;
+	}
+}
+
 void World::update_state_paused(float delta) {
 	if (game->is_key_pressed(GLFW_KEY_ESCAPE)) {
 		state = STATE_PLAYING;
@@ -240,9 +253,19 @@ void World::update(float delta) {
 		case STATE_PAUSED:   update_state_paused(delta);   break;
 		case STATE_GAMEOVER: update_state_gameover(delta); break;
 	}
+
+	if (game->is_key_pressed(GLFW_KEY_H)) {
+		draw_hitboxes ^= true;
+	}
 }
 
 void World::draw(float delta) {
+
+	{
+		extern void draw_stage_background(float delta);
+
+		draw_stage_background(delta);
+	}
 
 	// int i = 10000;
 	// 
@@ -260,8 +283,6 @@ void World::draw(float delta) {
 	}
 
 	{
-		// renderer->draw_circle(player.x, player.y, 100);
-
 		renderer->draw_sprite(player.sprite_index, int(player.frame_index), player.x, player.y);
 
 		if (player.hitbox_alpha > 0) {
@@ -287,6 +308,18 @@ void World::draw(float delta) {
 		renderer->draw_text(spr_font_main, "PAUSED",
 							PLAY_AREA_W / 2, PLAY_AREA_H / 2,
 							HALIGN_CENTER, VALIGN_MIDDLE);
+	}
+
+	if (draw_hitboxes) {
+		renderer->draw_rectangle(0, 0, PLAY_AREA_W, PLAY_AREA_H, 0x00000080);
+
+		renderer->draw_circle(player.x, player.y, player.radius);
+		for (int i = 0; i < bullet_count; i++) {
+			Bullet* b = &bullets[i];
+			renderer->draw_circle(b->x, b->y, b->radius);
+		}
+
+		renderer->draw_text(spr_font_main, "Press H to hide hitboxes", 0, 0);
 	}
 
 }

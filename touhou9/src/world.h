@@ -87,11 +87,14 @@ struct World {
 
 	u32 next_instance_id;
 
+	bool draw_hitboxes;
+
 	void init();
 	void destroy();
 
 	void update(float delta);
 	void update_state_playing(float delta);
+	void physics_step(float delta);
 	void update_state_paused(float delta);
 	void update_state_gameover(float delta);
 	void draw(float delta);

@@ -21,6 +21,13 @@
 #define log_info(fmt, ...)  printf(fmt "\n", ##__VA_ARGS__)
 #define log_error(fmt, ...) printf(KRED fmt "\n" KNRM, ##__VA_ARGS__)
 
+#define TIME(code)								\
+	do {										\
+		double ttttt = glfwGetTime();			\
+		code;									\
+		log_info("%.2fms\t" #code, (glfwGetTime() - ttttt) * 1000.0); \
+	} while (0)
+
 #define KNRM  "\x1B[0m"
 #define KRED  "\x1B[31m"
 #define KGRN  "\x1B[32m"

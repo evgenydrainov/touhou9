@@ -45,19 +45,10 @@ void Renderer::init() {
 		GLCheck(glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicies.size() * sizeof(indicies[0]), indicies.data(), GL_STATIC_DRAW));
 	}
 
-	GLCheck(glEnableVertexAttribArray(0));
-	GLCheck(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(batch[0]), (void*) 0)); // position
-
-	GLCheck(glEnableVertexAttribArray(1));
-	GLCheck(glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(batch[0]), (void*) 12)); // color
-
-	GLCheck(glEnableVertexAttribArray(2));
-	GLCheck(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(batch[0]), (void*) 28)); // texcoord
-
-	proj  = mat4{1.0f};
-	view  = mat4{1.0f};
-	model = mat4{1.0f};
-	MVP   = mat4{1.0f};
+	proj  = mat4{1};
+	view  = mat4{1};
+	model = mat4{1};
+	MVP   = mat4{1};
 
 	current_shader = &Shaders[shd_default];
 
@@ -81,10 +72,10 @@ void Renderer::break_batch() {
 	}
 
 #if 1
-	// GLCheck(glBindBuffer(GL_ARRAY_BUFFER, vbo));
+	GLCheck(glBindBuffer(GL_ARRAY_BUFFER, vbo));
 	GLCheck(glBufferSubData(GL_ARRAY_BUFFER, 0, batch.size() * sizeof(batch[0]), batch.data()));
 
-	// glEnableVertexAttribArray
+	Vertex::set_vertex_attrib();
 
 	GLCheck(glActiveTexture(GL_TEXTURE0));
 	GLCheck(glBindTexture(GL_TEXTURE_2D, current_texture));
@@ -98,7 +89,7 @@ void Renderer::break_batch() {
 
 	switch (mode) {
 		case MODE_QUADS: {
-			// glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+			// GLCheck(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo));
 
 			assert(batch.size() % VERTICIES_PER_QUAD == 0);
 
@@ -107,7 +98,7 @@ void Renderer::break_batch() {
 		}
 
 		case MODE_TRIANGLES: {
-			// glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+			// GLCheck(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
 
 			assert(batch.size() % 3 == 0);
 
@@ -221,6 +212,12 @@ void Renderer::set_shader(u32 shader_index) {
 
 void Renderer::reset_shader() {
 	set_shader(shd_default);
+}
+
+void Renderer::reset_state() {
+	Shader* shader = &Shaders[shd_default];
+	current_shader = shader;
+	if (current_shader->program != 0) { GLCheck(glUseProgram(current_shader->program)); }
 }
 
 void Renderer::set_shader_uniform(int location, float value) {
@@ -478,18 +475,18 @@ vec2 Renderer::draw_text(Sprite* sprite,
 	assert(text);
 
 	if (valign == VALIGN_MIDDLE) {
-		y -= get_text_size(sprite, text).y / 2.0f;
+		y -= floorf(get_text_size(sprite, text).y / 2.0f);
 	} else if (valign == VALIGN_BOTTOM) {
-		y -= get_text_size(sprite, text).y;
+		y -= floorf(get_text_size(sprite, text).y);
 	}
 
 	float ch_x = x;
 	float ch_y = y;
 
 	if (halign == HALIGN_CENTER) {
-		ch_x -= get_text_size(sprite, text, true).x / 2.0f;
+		ch_x -= floorf(get_text_size(sprite, text, true).x / 2.0f);
 	} else if (halign == HALIGN_RIGHT) {
-		ch_x -= get_text_size(sprite, text, true).x;
+		ch_x -= floorf(get_text_size(sprite, text, true).x);
 	}
 
 	int ch;
@@ -506,9 +503,9 @@ vec2 Renderer::draw_text(Sprite* sprite,
 			ch_y += float(sprite->height);
 
 			if (halign == HALIGN_CENTER) {
-				ch_x -= get_text_size(sprite, ptr + 1, true).x / 2.0f;
+				ch_x -= floorf(get_text_size(sprite, ptr + 1, true).x / 2.0f);
 			} else if (halign == HALIGN_RIGHT) {
-				ch_x -= get_text_size(sprite, ptr + 1, true).x;
+				ch_x -= floorf(get_text_size(sprite, ptr + 1, true).x);
 			}
 		}
 	}
@@ -665,5 +662,17 @@ vec2 Renderer::get_text_size(u32 sprite_index,
 	Sprite* sprite = &Sprites[sprite_index];
 	vec2 result = get_text_size(sprite, text, only_one_line);
 	return result;
+}
+
+
+void Vertex::set_vertex_attrib() {
+	GLCheck(glEnableVertexAttribArray(0));
+	GLCheck(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*) 0)); // position
+
+	GLCheck(glEnableVertexAttribArray(1));
+	GLCheck(glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*) 12)); // color
+
+	GLCheck(glEnableVertexAttribArray(2));
+	GLCheck(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*) 28)); // texcoord
 }
 

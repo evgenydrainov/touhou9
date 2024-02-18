@@ -50,7 +50,10 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 				break;
 			}
 		}
+	} else if (action == GLFW_REPEAT) {
+		game->key_repeat[key / 32] |= 1 << (key % 32);
 	}
+
 }
 
 static void error_callback(int error_code, const char* description) {
@@ -94,8 +97,8 @@ void Game::init_audio() {
 
 	ma_context_config context_config = ma_context_config_init();
 
-	result = ma_log_init(nullptr, &audio_log);
-	if (result != MA_SUCCESS) {
+	audio_log_initialized = ma_log_init(nullptr, &audio_log) == MA_SUCCESS;
+	if (!audio_log_initialized) {
 		log_error("Couldn't create audio logger.");
 	} else {
 		context_config.pLog = &audio_log;
@@ -109,13 +112,13 @@ void Game::init_audio() {
 	}
 
 	ma_backend backends[] = {ma_backend_dsound};
-	result = ma_context_init(backends, ArrayLength(backends), &context_config, &audio_context);
+	audio_context_initialized = ma_context_init(backends, ArrayLength(backends), &context_config, &audio_context) == MA_SUCCESS;
 
-	if (result != MA_SUCCESS) {
-		result = ma_context_init(nullptr, 0, &context_config, &audio_context);
+	if (!audio_context_initialized) {
+		audio_context_initialized = ma_context_init(nullptr, 0, &context_config, &audio_context) == MA_SUCCESS;
 	}
 
-	if (result != MA_SUCCESS) {
+	if (!audio_context_initialized) {
 		log_error("Couldn't initialize audio context.");
 		return;
 	}
@@ -127,8 +130,8 @@ void Game::init_audio() {
 
 	ma_engine_config engine_config = ma_engine_config_init();
 	engine_config.pContext = &audio_context;
-	result = ma_engine_init(&engine_config, &audio_engine);
-	if (result != MA_SUCCESS) {
+	audio_engine_initialized = ma_engine_init(&engine_config, &audio_engine) == MA_SUCCESS;
+	if (!audio_engine_initialized) {
 		log_error("Couldn't initialize audio engine.");
 		return;
 	}
@@ -231,8 +234,6 @@ bool Game::init() {
 		log_info("GL renderer: %s", string);
 	}
 
-	GLCheck(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
-
 	init_audio();
 
 	log_info("");
@@ -270,6 +271,8 @@ bool Game::init() {
 }
 
 void Game::destroy() {
+	double t = glfwGetTime();
+
 	world->destroy();
 
 	renderer->destroy();
@@ -280,12 +283,16 @@ void Game::destroy() {
 	unload_all_shaders();
 	unload_all_textures();
 
-	ma_engine_uninit(&audio_engine);
-	// TODO: Crashes when context is {0}
-	ma_context_uninit(&audio_context);
-	ma_log_uninit(&audio_log);
+	if (audio_engine_initialized) ma_engine_uninit(&audio_engine);
+	if (audio_context_initialized) ma_context_uninit(&audio_context);
+	if (audio_log_initialized) ma_log_uninit(&audio_log);
 
 	if (window) glfwDestroyWindow(window);
+	window = nullptr;
+
+	log_info("Freeing resources took %.2fms.", (glfwGetTime() - t) * 1000.0);
+	log_info("");
+
 	glfwTerminate();
 }
 
@@ -350,18 +357,31 @@ void Game::run() {
 		}
 
 		memset(key_pressed, 0, sizeof(key_pressed));
+		memset(key_repeat, 0, sizeof(key_repeat));
 
 		glfwPollEvents();
 	}
 }
 
 void Game::update(float delta) {
-	world->update(delta);
+	if (!skip_frame) {
+		world->update(delta);
+	}
 
 	if (is_key_pressed(GLFW_KEY_Z)) {
 		log_info("Z");
 		// ma_sound_start(&Sounds[snd_cancel].sound);
 		// ma_engine_play_sound(&audio_engine, "sounds/se_cancel00.wav", nullptr);
+	}
+
+	skip_frame = frame_advance;
+
+	if (is_key_pressed(GLFW_KEY_F5, true)) {
+		frame_advance = true;
+		skip_frame = false;
+	}
+	if (is_key_pressed(GLFW_KEY_F6)) {
+		frame_advance = false;
 	}
 }
 
@@ -380,9 +400,6 @@ void Game::draw(float delta) {
 
 			renderer->set_viewport(PLAY_AREA_X, PLAY_AREA_Y, PLAY_AREA_W, PLAY_AREA_H);
 			renderer->set_proj(glm::ortho<float>(0, PLAY_AREA_W, 0, PLAY_AREA_H, -1, 1));
-
-			// renderer->draw_sprite(spr_white, 0, 0, 0, PLAY_AREA_W / 16, PLAY_AREA_H / 16, 0, 0x000000ff);
-			renderer->draw_rectangle(0, 0, PLAY_AREA_W, PLAY_AREA_H, 0x000000ff);
 
 			world->draw(delta);
 
@@ -417,6 +434,12 @@ void Game::draw(float delta) {
 					// if (i++ % 60 == 0) log_info("%s\n", buf);
 				}
 			}
+
+			if (frame_advance) {
+				const char* buf = "F5 - Next Frame\n"
+					"F6 - Disable";
+				renderer->draw_text(spr_font_main, buf, 0, GAME_H, HALIGN_LEFT, VALIGN_BOTTOM);
+			}
 		}
 
 		renderer->set_render_target(nullptr);
@@ -428,13 +451,14 @@ void Game::draw(float delta) {
 			renderer->set_viewport(0, 0, width, height);
 			renderer->set_proj(glm::ortho<float>(0, (float)width, (float)height, 0, -1, 1));
 
+			GLCheck(glClearColor(0, 0, 0, 1));
 			GLCheck(glClear(GL_COLOR_BUFFER_BIT));
 
 			float xscale = (float)width  / (float)GAME_W;
 			float yscale = (float)height / (float)GAME_H;
 			float scale = fminf(xscale, yscale);
 
-			float iscale = fmaxf(floorf(scale), 1.0f);
+			float iscale = fmaxf(floorf(scale), 1);
 
 			int game_texture_w = (int) roundf((float)GAME_W * scale);
 			int game_texture_h = (int) roundf((float)GAME_H * scale);
@@ -459,3 +483,16 @@ void Game::draw(float delta) {
 	glfwSwapBuffers(window);
 
 }
+
+bool Game::is_key_pressed(int key, bool repeat) {
+	assert(key >= 0);
+	assert(key < GLFW_KEY_LAST);
+
+	bool result = (key_pressed[key / 32] & (1 << (key % 32))) != 0;
+	if (repeat) {
+		result |= (key_repeat[key / 32] & (1 << (key % 32))) != 0;
+	}
+
+	return result;
+}
+

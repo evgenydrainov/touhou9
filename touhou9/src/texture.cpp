@@ -34,11 +34,13 @@ void Texture::create_framebuffer(int width, int height,
 	GLCheck(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
 	GLCheck(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
 
-	GLCheck(glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, format, GL_UNSIGNED_BYTE, 0));
+	GLCheck(glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, format, GL_UNSIGNED_BYTE, nullptr));
 
-	GLCheck(glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture, 0));
-	u32 draw_buffers[] = {GL_COLOR_ATTACHMENT0};
-	GLCheck(glDrawBuffers(ArrayLength(draw_buffers), draw_buffers));
+	// GLCheck(glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture, 0));
+	// u32 draw_buffers[] = {GL_COLOR_ATTACHMENT0};
+	// GLCheck(glDrawBuffers(ArrayLength(draw_buffers), draw_buffers));
+
+	GLCheck(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0));
 
 	{
 		u32 status;
